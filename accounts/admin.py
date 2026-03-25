@@ -1,3 +1,1 @@
-from django.contrib import admin
-
-# Register your models here.
+# accounts app uses Django's built-in User model - no custom admin registration needed
