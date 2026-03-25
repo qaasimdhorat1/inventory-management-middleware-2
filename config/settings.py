@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'accounts.apps.AccountsConfig',
+    'inventory.apps.InventoryConfig',
 ]
 
 MIDDLEWARE = [
