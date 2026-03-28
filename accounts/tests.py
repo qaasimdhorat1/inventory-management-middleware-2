@@ -217,6 +217,7 @@ class ChangePasswordViewTests(TestCase):
         })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+
 class PasswordResetViewTests(TestCase):
     """Tests for the password reset endpoint."""
 

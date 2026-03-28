@@ -114,6 +114,7 @@ class ChangePasswordSerializer(serializers.Serializer):
             )
         return attrs
 
+
 class PasswordResetSerializer(serializers.Serializer):
     """
     Serializer for password reset via username and email verification.

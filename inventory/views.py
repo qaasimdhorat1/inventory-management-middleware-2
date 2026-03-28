@@ -210,6 +210,7 @@ class StockUpdateView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class StockChangeHistoryView(generics.ListAPIView):
     """
     GET /api/inventory/items/<id>/history/

@@ -91,6 +91,7 @@ class ChangePasswordView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class PasswordResetView(APIView):
     """
     POST /api/auth/reset-password/
