@@ -226,25 +226,25 @@ class DashboardView(APIView):
     """
     GET /api/inventory/dashboard/
     Returns summary statistics for the inventory dashboard.
+    Uses database-level aggregation for scalability.
     """
 
     permission_classes = (IsAuthenticated,)
 
     def get(self, request) -> Response:
         """Return inventory summary statistics."""
+        from django.db.models import Sum, F, Count
+
         items = InventoryItem.objects.filter(owner=request.user)
 
-        total_items = items.count()
-        total_quantity = sum(item.quantity for item in items)
-        total_value = sum(
-            item.quantity * item.price for item in items
+        stats = items.aggregate(
+            total_items=Count('id'),
+            total_quantity=Sum('quantity'),
+            total_value=Sum(F('quantity') * F('price')),
         )
-        low_stock_count = items.filter(
-            status='low_stock'
-        ).count()
-        out_of_stock_count = items.filter(
-            status='out_of_stock'
-        ).count()
+
+        low_stock_count = items.filter(status='low_stock').count()
+        out_of_stock_count = items.filter(status='out_of_stock').count()
         categories_count = Category.objects.filter(
             owner=request.user
         ).count()
@@ -255,9 +255,9 @@ class DashboardView(APIView):
 
         return Response(
             {
-                "total_items": total_items,
-                "total_quantity": total_quantity,
-                "total_value": float(total_value),
+                "total_items": stats['total_items'] or 0,
+                "total_quantity": stats['total_quantity'] or 0,
+                "total_value": float(stats['total_value'] or 0),
                 "low_stock_count": low_stock_count,
                 "out_of_stock_count": out_of_stock_count,
                 "categories_count": categories_count,
