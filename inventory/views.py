@@ -124,6 +124,7 @@ class StockUpdateView(APIView):
     POST /api/inventory/items/<id>/stock/
     Update stock levels for a specific inventory item.
     Creates an audit trail entry for every stock change.
+    Sends email notification if item reaches low stock or out of stock.
     """
 
     permission_classes = (IsAuthenticated,)
@@ -172,6 +173,28 @@ class StockUpdateView(APIView):
             changed_by=request.user,
         )
 
+        if item.status in ('low_stock', 'out_of_stock'):
+            try:
+                from django.core.mail import send_mail
+                from django.conf import settings
+                status_label = 'LOW STOCK' if item.status == 'low_stock' else 'OUT OF STOCK'
+                send_mail(
+                    subject=f'Stock Alert: {item.name} is {status_label}',
+                    message=(
+                        f'Hello {request.user.first_name or request.user.username},\n\n'
+                        f'The item "{item.name}" (SKU: {item.sku}) is now {status_label}.\n\n'
+                        f'Current quantity: {item.quantity}\n'
+                        f'Low stock threshold: {item.low_stock_threshold}\n\n'
+                        f'Please review your inventory.\n\n'
+                        f'— Inventory Management System'
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[request.user.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
         return Response(
             {
                 "message": "Stock updated successfully.",
@@ -186,7 +209,6 @@ class StockUpdateView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
 
 class StockChangeHistoryView(generics.ListAPIView):
     """

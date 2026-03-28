@@ -113,3 +113,37 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"new_password": "New password fields didn't match."}
             )
         return attrs
+
+class PasswordResetSerializer(serializers.Serializer):
+    """
+    Serializer for password reset via username and email verification.
+    Allows users who have forgotten their password to reset it
+    by verifying their identity through username and email.
+    """
+
+    username = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    new_password = serializers.CharField(
+        required=True,
+        validators=[validate_password],
+        style={'input_type': 'password'},
+    )
+    new_password2 = serializers.CharField(
+        required=True,
+        style={'input_type': 'password'},
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        """Ensure new passwords match and user exists with matching email."""
+        if attrs['new_password'] != attrs['new_password2']:
+            raise serializers.ValidationError(
+                {"new_password": "New password fields didn't match."}
+            )
+        if not User.objects.filter(
+            username=attrs['username'],
+            email=attrs['email'],
+        ).exists():
+            raise serializers.ValidationError(
+                "No account found with this username and email combination."
+            )
+        return attrs

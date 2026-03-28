@@ -216,3 +216,67 @@ class ChangePasswordViewTests(TestCase):
             'new_password2': 'NewSecurePass456!',
         })
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class PasswordResetViewTests(TestCase):
+    """Tests for the password reset endpoint."""
+
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.url = '/api/auth/reset-password/'
+        self.user = User.objects.create_user(
+            username='resetuser',
+            email='reset@example.com',
+            password='OldPassword123!',
+        )
+
+    def test_reset_password_success(self) -> None:
+        """Test successful password reset with valid credentials."""
+        response = self.client.post(self.url, {
+            'username': 'resetuser',
+            'email': 'reset@example.com',
+            'new_password': 'NewSecurePass456!',
+            'new_password2': 'NewSecurePass456!',
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewSecurePass456!'))
+
+    def test_reset_password_wrong_email(self) -> None:
+        """Test reset fails with incorrect email."""
+        response = self.client.post(self.url, {
+            'username': 'resetuser',
+            'email': 'wrong@example.com',
+            'new_password': 'NewSecurePass456!',
+            'new_password2': 'NewSecurePass456!',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reset_password_wrong_username(self) -> None:
+        """Test reset fails with incorrect username."""
+        response = self.client.post(self.url, {
+            'username': 'wronguser',
+            'email': 'reset@example.com',
+            'new_password': 'NewSecurePass456!',
+            'new_password2': 'NewSecurePass456!',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reset_password_mismatch(self) -> None:
+        """Test reset fails when new passwords don't match."""
+        response = self.client.post(self.url, {
+            'username': 'resetuser',
+            'email': 'reset@example.com',
+            'new_password': 'NewSecurePass456!',
+            'new_password2': 'DifferentPass789!',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reset_password_weak(self) -> None:
+        """Test reset fails with weak password."""
+        response = self.client.post(self.url, {
+            'username': 'resetuser',
+            'email': 'reset@example.com',
+            'new_password': '123',
+            'new_password2': '123',
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

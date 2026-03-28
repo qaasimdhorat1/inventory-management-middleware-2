@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from .serializers import (
     ChangePasswordSerializer,
+    PasswordResetSerializer,
     RegisterSerializer,
     UserProfileSerializer,
 )
@@ -87,5 +88,50 @@ class ChangePasswordView(APIView):
         user.save()
         return Response(
             {"message": "Password changed successfully."},
+            status=status.HTTP_200_OK,
+        )
+
+class PasswordResetView(APIView):
+    """
+    POST /api/auth/reset-password/
+    Public endpoint for resetting a forgotten password.
+    Verifies identity via username and email combination.
+    Sends a confirmation email upon successful reset.
+    """
+
+    permission_classes = (AllowAny,)
+
+    def post(self, request) -> Response:
+        serializer = PasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = User.objects.get(
+            username=serializer.validated_data['username'],
+            email=serializer.validated_data['email'],
+        )
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+
+        try:
+            from django.core.mail import send_mail
+            from django.conf import settings
+            send_mail(
+                subject='Password Reset Confirmation — Inventory Manager',
+                message=(
+                    f'Hello {user.first_name or user.username},\n\n'
+                    f'Your password has been successfully reset.\n\n'
+                    f'If you did not make this change, please contact '
+                    f'support immediately.\n\n'
+                    f'— Inventory Management System'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+
+        return Response(
+            {"message": "Password has been reset successfully."},
             status=status.HTTP_200_OK,
         )
