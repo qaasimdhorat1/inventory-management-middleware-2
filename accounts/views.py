@@ -141,4 +141,3 @@ class PasswordResetView(APIView):
             {"message": "Password has been reset successfully."},
             status=status.HTTP_200_OK,
         )
-        

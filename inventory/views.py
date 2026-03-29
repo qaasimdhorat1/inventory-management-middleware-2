@@ -172,7 +172,7 @@ class StockUpdateView(APIView):
             reason=reason,
             changed_by=request.user,
         )
-        
+
         if item.status in ('low_stock', 'out_of_stock'):
             import threading
             from django.core.mail import send_mail
