@@ -21,6 +21,7 @@ Django REST API backend for an enterprise-grade Inventory Management System. Pro
 | Static Files | WhiteNoise | Efficient static file serving |
 | CI/CD | GitHub Actions | Automated linting and testing |
 | Deployment | Render | Cloud platform hosting |
+| Email | Gmail SMTP | Password reset confirmations and stock alerts |
 
 ## Architecture
 
@@ -54,7 +55,7 @@ This middleware follows a **three-layer enterprise architecture** with clear sep
 ### App Structure
 
 - **config/** — Project-level settings, URL routing, and WSGI configuration. Environment-based configuration using `python-dotenv` for secure secret management.
-- **accounts/** — User registration, JWT authentication (login, token refresh), profile retrieval and editing, and password changes with old password verification.
+- **accounts/** — User registration, JWT authentication (login, token refresh), profile retrieval and editing, password changes, and password reset with email confirmation notifications.
 - **inventory/** — Category and inventory item CRUD, stock level management with audit logging, low-stock alerts, dashboard statistics, and search/filter/ordering capabilities.
 
 ## API Endpoints
@@ -69,6 +70,7 @@ This middleware follows a **three-layer enterprise architecture** with clear sep
 | GET | `/api/auth/profile/` | Retrieve authenticated user profile | Yes |
 | PATCH | `/api/auth/profile/` | Update user profile fields | Yes |
 | POST | `/api/auth/change-password/` | Change password with old password verification | Yes |
+| POST | `/api/auth/reset-password/` | Reset forgotten password with identity verification | No |
 
 ### Inventory (`/api/inventory/`)
 
@@ -158,6 +160,8 @@ SECRET_KEY=your-secret-key-here
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:3000
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
 ```
 
 5. Run migrations and start the server:
@@ -186,14 +190,22 @@ Environment variables configured on Render:
 | `ALLOWED_HOSTS` | Render domain |
 | `CORS_ALLOWED_ORIGINS` | Frontend deployment URL |
 | `PYTHON_VERSION` | Python runtime version |
+| `EMAIL_HOST_USER` | Gmail address for sending system emails |
+| `EMAIL_HOST_PASSWORD` | Gmail App Password for SMTP authentication |
 
 ## Testing
 
-The project includes **51 automated tests** covering authentication, inventory CRUD, stock management, and edge cases.
+The project includes **56 automated tests** with **97% code coverage**, covering authentication, password reset, inventory CRUD, stock management, and edge cases.
 
 Run the full test suite:
 ```bash
 python manage.py test
+```
+
+Run tests with coverage reporting:
+```bash
+coverage run manage.py test
+coverage report
 ```
 
 Run tests for a specific app:
@@ -204,12 +216,13 @@ python manage.py test inventory
 
 ### Test Coverage
 
-**Accounts (18 tests):**
+**Accounts (23 tests):**
 - User registration with valid and invalid data
 - Login with correct and incorrect credentials
 - JWT token refresh
 - Profile retrieval and updates
 - Password change with verification
+- Password reset with valid credentials, wrong email, wrong username, mismatched passwords, and weak passwords
 - Unauthenticated access rejection
 
 **Inventory (33 tests):**
@@ -228,7 +241,7 @@ python manage.py test inventory
 A GitHub Actions pipeline runs automatically on every push to `main`:
 
 1. **Lint** — Runs `flake8` to enforce code quality and PEP 8 compliance
-2. **Test** — Runs the full test suite of 51 tests against a clean database
+2. **Test** — Runs the full test suite of 56 tests with coverage reporting, enforcing a minimum 90% coverage threshold
 
 The pipeline configuration is located at `.github/workflows/ci.yml`.
 
@@ -248,6 +261,7 @@ The pipeline configuration is located at `.github/workflows/ci.yml`.
   - SSL redirect enforced
   - Secure session and CSRF cookies
 - **Environment-based Configuration:** Secrets (SECRET_KEY, DATABASE_URL) managed via environment variables and never committed to version control
+- **Email Notifications:** Password reset confirmations and low-stock alerts sent via Gmail SMTP. Email credentials managed via environment variables, never committed to source control.
 
 ## Key Technical Decisions
 
@@ -260,6 +274,7 @@ The pipeline configuration is located at `.github/workflows/ci.yml`.
 | **Automatic status calculation** | Item status (`in_stock`, `low_stock`, `out_of_stock`) is computed on save based on quantity and threshold, eliminating manual status management errors. |
 | **Token-based authentication (JWT)** | Stateless authentication suitable for a decoupled frontend/backend architecture. Refresh token rotation prevents token reuse attacks. |
 | **Pagination and throttling** | Default pagination (10 items/page) and rate limiting ensure the API remains performant and resistant to abuse at scale. |
+| **Gmail SMTP for email** | Django's built-in email framework with Gmail SMTP provides reliable email delivery without requiring a paid third-party service. `fail_silently=True` ensures email failures never break core application functionality. |
 
 ## Repository Migration
 
