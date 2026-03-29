@@ -113,26 +113,32 @@ class PasswordResetView(APIView):
         user.set_password(serializer.validated_data['new_password'])
         user.save()
 
-        try:
-            from django.core.mail import send_mail
-            from django.conf import settings
-            send_mail(
-                subject='Password Reset Confirmation — Inventory Manager',
-                message=(
-                    f'Hello {user.first_name or user.username},\n\n'
-                    f'Your password has been successfully reset.\n\n'
-                    f'If you did not make this change, please contact '
-                    f'support immediately.\n\n'
-                    f'— Inventory Management System'
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[user.email],
-                fail_silently=True,
-            )
-        except Exception:
-            pass
+        import threading
+        from django.core.mail import send_mail
+        from django.conf import settings
+
+        def send_reset_email():
+            try:
+                send_mail(
+                    subject='Password Reset Confirmation - Inventory Manager',
+                    message=(
+                        f'Hello {user.first_name or user.username},\n\n'
+                        f'Your password has been successfully reset.\n\n'
+                        f'If you did not make this change, please contact '
+                        f'support immediately.\n\n'
+                        f'- Inventory Management System'
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+
+        threading.Thread(target=send_reset_email, daemon=True).start()
 
         return Response(
             {"message": "Password has been reset successfully."},
             status=status.HTTP_200_OK,
         )
+        

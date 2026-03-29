@@ -172,28 +172,39 @@ class StockUpdateView(APIView):
             reason=reason,
             changed_by=request.user,
         )
-
+        
         if item.status in ('low_stock', 'out_of_stock'):
-            try:
-                from django.core.mail import send_mail
-                from django.conf import settings
-                status_label = 'LOW STOCK' if item.status == 'low_stock' else 'OUT OF STOCK'
-                send_mail(
-                    subject=f'Stock Alert: {item.name} is {status_label}',
-                    message=(
-                        f'Hello {request.user.first_name or request.user.username},\n\n'
-                        f'The item "{item.name}" (SKU: {item.sku}) is now {status_label}.\n\n'
-                        f'Current quantity: {item.quantity}\n'
-                        f'Low stock threshold: {item.low_stock_threshold}\n\n'
-                        f'Please review your inventory.\n\n'
-                        f'— Inventory Management System'
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[request.user.email],
-                    fail_silently=True,
-                )
-            except Exception:
-                pass
+            import threading
+            from django.core.mail import send_mail
+            from django.conf import settings
+            status_label = 'LOW STOCK' if item.status == 'low_stock' else 'OUT OF STOCK'
+            item_name = item.name
+            item_sku = item.sku
+            item_quantity = item.quantity
+            item_threshold = item.low_stock_threshold
+            user_name = request.user.first_name or request.user.username
+            user_email = request.user.email
+
+            def send_stock_alert():
+                try:
+                    send_mail(
+                        subject=f'Stock Alert: {item_name} is {status_label}',
+                        message=(
+                            f'Hello {user_name},\n\n'
+                            f'The item "{item_name}" (SKU: {item_sku}) is now {status_label}.\n\n'
+                            f'Current quantity: {item_quantity}\n'
+                            f'Low stock threshold: {item_threshold}\n\n'
+                            f'Please review your inventory.\n\n'
+                            f'- Inventory Management System'
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user_email],
+                        fail_silently=True,
+                    )
+                except Exception:
+                    pass
+
+            threading.Thread(target=send_stock_alert, daemon=True).start()
 
         return Response(
             {
